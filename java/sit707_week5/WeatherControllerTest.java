@@ -1,144 +1,113 @@
 package sit707_week5;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 public class WeatherControllerTest {
 
-    // Shared variables for tests
-    static WeatherController controller;
-    static double minTemperature;
-    static double maxTemperature;
-    static double averageTemperature;
-
-    /**
-     * Student identity test
-     */
+    // -----------------------------
+    // Student tests (5.1P)
+    // -----------------------------
     @Test
     public void testStudentIdentity() {
         String studentId = "s224437209";
         Assert.assertNotNull("Student ID is null", studentId);
     }
 
-    /**
-     * Student name test
-     */
     @Test
     public void testStudentName() {
         String studentName = "Michael Morks";
         Assert.assertNotNull("Student name is null", studentName);
     }
 
-    /**
-     * Arrange step – executed once before all tests
-     */
-    @BeforeClass
-    public static void setup() {
+    // -----------------------------
+    // Temperature tests (5.1P)
+    // -----------------------------
+    @Test
+    public void testTemperatureMin() {
+        System.out.println("+++ testTemperatureMin +++");
+        WeatherController wController = WeatherController.getInstance();
 
-        System.out.println("+++ Setup WeatherController +++");
-
-        // Arrange
-        controller = WeatherController.getInstance();
-
-        int nHours = controller.getTotalHours();
-
-        minTemperature = 1000;
-        maxTemperature = -1;
-        double sumTemp = 0;
+        int nHours = wController.getTotalHours();
+        double minTemperature = 1000;
 
         for (int i = 0; i < nHours; i++) {
-
-            double temperatureVal = controller.getTemperatureForHour(i + 1);
-
+            double temperatureVal = wController.getTemperatureForHour(i + 1);
             if (minTemperature > temperatureVal) {
                 minTemperature = temperatureVal;
             }
+        }
 
+        Assert.assertTrue(wController.getTemperatureMinFromCache() == minTemperature);
+        wController.close();
+    }
+
+    @Test
+    public void testTemperatureMax() {
+        System.out.println("+++ testTemperatureMax +++");
+        WeatherController wController = WeatherController.getInstance();
+
+        int nHours = wController.getTotalHours();
+        double maxTemperature = -1;
+
+        for (int i = 0; i < nHours; i++) {
+            double temperatureVal = wController.getTemperatureForHour(i + 1);
             if (maxTemperature < temperatureVal) {
                 maxTemperature = temperatureVal;
             }
+        }
 
+        Assert.assertTrue(wController.getTemperatureMaxFromCache() == maxTemperature);
+        wController.close();
+    }
+
+    @Test
+    public void testTemperatureAverage() {
+        System.out.println("+++ testTemperatureAverage +++");
+        WeatherController wController = WeatherController.getInstance();
+
+        int nHours = wController.getTotalHours();
+        double sumTemp = 0;
+
+        for (int i = 0; i < nHours; i++) {
+            double temperatureVal = wController.getTemperatureForHour(i + 1);
             sumTemp += temperatureVal;
         }
 
-        averageTemperature = sumTemp / nHours;
+        double averageTemp = sumTemp / nHours;
+        Assert.assertTrue(wController.getTemperatureAverageFromCache() == averageTemp);
+        wController.close();
     }
 
-    /**
-     * Test minimum temperature
-     */
-    @Test
-    public void testTemperatureMin() {
-
-        System.out.println("+++ testTemperatureMin +++");
-
-        // Act
-        double controllerMin = controller.getTemperatureMinFromCache();
-
-        // Assert
-        Assert.assertEquals(minTemperature, controllerMin, 0.001);
-    }
-
-    /**
-     * Test maximum temperature
-     */
-    @Test
-    public void testTemperatureMax() {
-
-        System.out.println("+++ testTemperatureMax +++");
-
-        // Act
-        double controllerMax = controller.getTemperatureMaxFromCache();
-
-        // Assert
-        Assert.assertEquals(maxTemperature, controllerMax, 0.001);
-    }
-
-    /**
-     * Test average temperature
-     */
-    @Test
-    public void testTemperatureAverage() {
-
-        System.out.println("+++ testTemperatureAverage +++");
-
-        // Act
-        double controllerAvg = controller.getTemperatureAverageFromCache();
-
-        // Assert
-        Assert.assertEquals(averageTemperature, controllerAvg, 0.001);
-    }
-
-    /**
-     * Cleanup – executed once after all tests
-     */
-    @AfterClass
-    public static void cleanup() {
-
-        System.out.println("+++ Closing WeatherController +++");
-
-        controller.close();
-    }
-
-    /**
-     * Persist test (for future task 5.3C)
-     */
+    // -----------------------------
+    // Updated 5.2P/5.2C test
+    // -----------------------------
     @Test
     public void testTemperaturePersist() {
-        /*
-         * Remove below comments ONLY for 5.3C task.
-         */
-//      System.out.println("+++ testTemperaturePersist +++");
-//      
-//      WeatherController wController = WeatherController.getInstance();
-//      
-//      String persistTime = wController.persistTemperature(10, 19.5);
-//      String now = new SimpleDateFormat("H:m:s").format(new Date());
-//      
-//      Assert.assertTrue(persistTime.equals(now));
-//      
-//      wController.close();
+        System.out.println("+++ testTemperaturePersist +++");
+
+        WeatherController wController = WeatherController.getInstance();
+
+        // Inject a fixed clock for repeatable testing
+        Clock fixedClock = Clock.fixed(
+                Instant.parse("2026-03-11T12:00:00Z"), ZoneId.of("UTC")
+        );
+        wController.setClock(fixedClock);
+
+        // Persist temperature
+        String persistTime = wController.persistTemperature(10, 19.5);
+
+        // Expected time using same fixed clock
+        String expectedTime = LocalTime.now(fixedClock)
+                .format(DateTimeFormatter.ofPattern("H:m:s"));
+
+        Assert.assertEquals(expectedTime, persistTime);
+        wController.close();
     }
 }
